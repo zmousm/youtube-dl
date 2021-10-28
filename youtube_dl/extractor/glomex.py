@@ -9,6 +9,7 @@ from ..compat import (
     compat_str,
     compat_parse_qs,
     compat_urllib_parse_urlparse,
+    compat_urllib_parse_urlencode,
 )
 from ..utils import (
     determine_ext,
@@ -17,70 +18,70 @@ from ..utils import (
     try_get,
     unified_timestamp,
     url_or_none,
+    smuggle_url,
+    unsmuggle_url,
+    unescapeHTML,
 )
 
 
-class RutubeBaseIE(InfoExtractor):
-    def _download_api_info(self, video_id, query=None):
-        if not query:
-            query = {}
-        query['format'] = 'json'
+class GlomexBaseIE(InfoExtractor):
+    _DEFAULT_ORIGIN_URL = 'https://player.glomex.com/'
+    _BASE_API_URL = 'https://integration-cloudfront-eu-west-1.mes.glomex.cloud/'
+
+    @staticmethod
+    def _smuggle_origin_url(url, origin_url):
+        return smuggle_url(url, {'origin': origin_url})
+
+    @classmethod
+    def _unsmuggle_origin_url(cls, url, fallback_origin_url=None):
+        defaults = {'origin': fallback_origin_url or cls._DEFAULT_ORIGIN_URL}
+        unsmuggled_url, data = unsmuggle_url(url, default=defaults)
+        return unsmuggled_url, data['origin']
+
+    def _download_api_data(self, video_id, integration, current_url=None):
+        query = {
+            'integration_id': integration,
+            'playlist_id': video_id,
+            'current_url': current_url or self._DEFAULT_ORIGIN_URL,
+        }
         return self._download_json(
-            'http://rutube.ru/api/video/%s/' % video_id,
+            self._BASE_API_URL,
             video_id, 'Downloading video JSON',
             'Unable to download video JSON', query=query)
 
     @staticmethod
-    def _extract_info(video, video_id=None, require_title=True):
+    def _extract_info(_video, video_id=None, require_title=True):
+        video = _video['videos'][0]
+
         title = video['title'] if require_title else video.get('title')
 
-        age_limit = video.get('is_adult')
-        if age_limit is not None:
-            age_limit = 18 if age_limit is True else 0
-
-        uploader_id = try_get(video, lambda x: x['author']['id'])
-        category = try_get(video, lambda x: x['category']['name'])
+        thumbnail = '%s/profile:player-960x540' % try_get(
+            video, lambda x: x['image']['url'])
 
         return {
-            'id': video.get('id') or video_id if video_id else video['id'],
+            'id': video.get('clip_id') or video_id,
             'title': title,
             'description': video.get('description'),
-            'thumbnail': video.get('thumbnail_url'),
-            'duration': int_or_none(video.get('duration')),
-            'uploader': try_get(video, lambda x: x['author']['name']),
-            'uploader_id': compat_str(uploader_id) if uploader_id else None,
-            'timestamp': unified_timestamp(video.get('created_ts')),
-            'category': [category] if category else None,
-            'age_limit': age_limit,
-            'view_count': int_or_none(video.get('hits')),
-            'comment_count': int_or_none(video.get('comments_count')),
-            'is_live': bool_or_none(video.get('is_livestream')),
+            'thumbnail': thumbnail,
+            'duration': int_or_none(video.get('clip_duration')),
+            'timestamp': video.get('created_at'),
         }
 
-    def _download_and_extract_info(self, video_id, query=None):
-        return self._extract_info(
-            self._download_api_info(video_id, query=query), video_id)
+    def _download_and_extract_api_data(self, video_id, integration, current_url):
+        api_data = self._download_api_data(video_id, integration, current_url)
+        info = self._extract_info(api_data, video_id)
+        info['formats'] = self._extract_formats(api_data, video_id)
+        return info
 
-    def _download_api_options(self, video_id, query=None):
-        if not query:
-            query = {}
-        query['format'] = 'json'
-        return self._download_json(
-            'http://rutube.ru/api/play/options/%s/' % video_id,
-            video_id, 'Downloading options JSON',
-            'Unable to download options JSON',
-            headers=self.geo_verification_headers(), query=query)
-
-    def _extract_formats(self, options, video_id):
+    def _extract_formats(self, _options, video_id):
+        options = _options['videos'][0]
         formats = []
-        for format_id, format_url in options['video_balancer'].items():
+        for format_id, format_url in options['source'].items():
             ext = determine_ext(format_url)
             if ext == 'm3u8':
                 formats.extend(self._extract_m3u8_formats(
-                    format_url, video_id, 'mp4', m3u8_id=format_id, fatal=False))
-            elif ext == 'f4m':
-                formats.extend(self._extract_f4m_formats(
-                    format_url, video_id, f4m_id=format_id, fatal=False))
+                    format_url, video_id, 'mp4', m3u8_id=format_id,
+                    fatal=False))
             else:
                 formats.append({
                     'url': format_url,
@@ -89,15 +90,13 @@ class RutubeBaseIE(InfoExtractor):
         self._sort_formats(formats)
         return formats
 
-    def _download_and_extract_formats(self, video_id, query=None):
-        return self._extract_formats(
-            self._download_api_options(video_id, query=query), video_id)
 
-
-class RutubeIE(RutubeBaseIE):
-    IE_NAME = 'rutube'
-    IE_DESC = 'Rutube videos'
-    _VALID_URL = r'https?://rutube\.ru/(?:video|(?:play/)?embed)/(?P<id>[\da-z]{32})'
+class GlomexIE(GlomexBaseIE):
+    IE_NAME = 'glomex'
+    IE_DESC = 'Glomex videos'
+    _VALID_URL = r'https?://video.glomex.com/[^/]+/(?P<id>v-[^-]+)'
+    # Hard-coded integration ID for video.glomex.com
+    _INTEGRATION_ID = '19syy24xjn1oqlpc'
 
     _TESTS = [{
         'url': 'http://rutube.ru/video/3eac3b4561676c17df9132a9a1e62e3e/',
@@ -130,25 +129,25 @@ class RutubeIE(RutubeBaseIE):
 
     @classmethod
     def suitable(cls, url):
-        return False if RutubePlaylistIE.suitable(url) else super(RutubeIE, cls).suitable(url)
-
-    @staticmethod
-    def _extract_urls(webpage):
-        return [mobj.group('url') for mobj in re.finditer(
-            r'<iframe[^>]+?src=(["\'])(?P<url>(?:https?:)?//rutube\.ru/embed/[\da-z]{32}.*?)\1',
-            webpage)]
+        return False if GlomexPlaylistIE.suitable(url) else super(GlomexIE, cls).suitable(url)
 
     def _real_extract(self, url):
         video_id = self._match_id(url)
-        info = self._download_and_extract_info(video_id)
-        info['formats'] = self._download_and_extract_formats(video_id)
-        return info
+        # Defer to the glomex:embed IE: Build and return a player URL using the
+        # matched video ID and the hard-coded integration ID
+        return {
+            '_type': 'url',
+            'url': GlomexEmbedIE.build_player_url(video_id,
+                self._INTEGRATION_ID, url),
+            'ie_key': GlomexEmbedIE.ie_key(),
+        }
 
 
-class RutubeEmbedIE(RutubeBaseIE):
-    IE_NAME = 'rutube:embed'
-    IE_DESC = 'Rutube embedded videos'
-    _VALID_URL = r'https?://rutube\.ru/(?:video|play)/embed/(?P<id>[0-9]+)'
+class GlomexEmbedIE(GlomexBaseIE):
+    IE_NAME = 'glomex:embed'
+    IE_DESC = 'Glomex embedded videos'
+    _BASE_PLAYER_URL = 'https://player.glomex.com/integration/1/iframe-player.html'
+    _VALID_URL = r'(?:https?:)?//player\.glomex\.com/integration/[^/]+/iframe-player\.html\?(?:(?:integrationId=(?P<integration>[^&#]+)|playlistId=(?P<id>[^&#]+)|[^&=#]+=[^&#]+)&?)+'
 
     _TESTS = [{
         'url': 'http://rutube.ru/video/embed/6722881?vk_puid37=&vk_puid38=',
@@ -174,20 +173,75 @@ class RutubeEmbedIE(RutubeBaseIE):
         'only_matching': True,
     }]
 
-    def _real_extract(self, url):
-        embed_id = self._match_id(url)
-        # Query may contain private videos token and should be passed to API
-        # requests (see #19163)
-        query = compat_parse_qs(compat_urllib_parse_urlparse(url).query)
-        options = self._download_api_options(embed_id, query)
-        video_id = options['effective_video']
-        formats = self._extract_formats(options, video_id)
-        info = self._download_and_extract_info(video_id, query)
-        info.update({
-            'extractor_key': 'Rutube',
-            'formats': formats,
+    @classmethod
+    def build_player_url(cls, video_id, integration, origin_url=None):
+        query_string = compat_urllib_parse_urlencode({
+            'playlistId': video_id,
+            'integrationId': integration,
         })
-        return info
+        player_url = '%s?%s' % (cls._BASE_PLAYER_URL, query_string)
+        if origin_url is not None:
+            player_url = cls._smuggle_origin_url(player_url, origin_url)
+        return player_url
+
+    @classmethod
+    def _match_integration(cls, url):
+        if '_VALID_URL_RE' not in cls.__dict__:
+            cls._VALID_URL_RE = re.compile(cls._VALID_URL)
+        m = cls._VALID_URL_RE.match(url)
+        assert m
+        return compat_str(m.group('integration'))
+
+    @classmethod
+    def _extract_urls(cls, webpage, origin_url):
+        # https://docs.glomex.com/publisher/video-player-integration/javascript-api/
+        EMBED_RE = r'''(?x)
+        (?:
+            <iframe[^>]+?src=(?P<_q1>%(quot_re)s)
+                (?P<url>(?:https?:)?//player\.glomex\.com/integration/[^/]+/iframe-player\.html\?
+                (?:(?!(?P=_q1)).)+)(?P=_q1)(?:\s|>)|
+            <(?P<html_tag>glomex-player|div)(?:(?:
+                data-integration-id=(?P<_q2>%(quot_re)s)(?P<integration_html>(?:(?!(?P=_q2)).)+)(?P=_q2)|
+                data-playlist-id=(?P<_q3>%(quot_re)s)(?P<id_html>(?:(?!(?P=_q3)).)+)(?P=_q3)|
+                data-glomex-player=(?P<_q4>%(quot_re)s)(?P<glomex_player>true)(?P=_q4)|
+                [^>]*?
+            )\s*)+>|
+            # naive parsing of inline scripts for hard-coded integration parameters
+            <(?P<script_tag>script)[^<]*?>(?:(?:
+                (?P<_stjs1>dataset\.)?integrationId\s*(?(_stjs1)=|:)\s*
+                    (?P<_q5>%(quot_re)s)(?P<integration_js>(?:(?!(?P=_q5)).)+)(?P=_q5)\s*(?(_stjs1);|,)?|
+                (?P<_stjs2>dataset\.)?playlistId\s*(?(_stjs2)=|:)\s*
+                    (?P<_q6>%(quot_re)s)(?P<id_js>(?:(?!(?P=_q6)).)+)(?P=_q6)\s*(?(_stjs2);|,)?|
+                (?:\s|.)*?
+            )\s*)+</script>
+        )
+        ''' % { 'quot_re': r'[\"\']' }
+        for mobj in re.finditer(EMBED_RE, webpage):
+            url, html_tag, video_id_html, integration_html, glomex_player, \
+                script_tag, video_id_js, integration_js = \
+                    mobj.group('url', 'html_tag', 'id_html',
+                        'integration_html', 'glomex_player', 'script_tag',
+                        'id_js', 'integration_js')
+            if url:
+                yield cls._smuggle_origin_url(unescapeHTML(url), origin_url)
+            elif html_tag:
+                if html_tag == "div" and not glomex_player:
+                    continue
+                if not video_id_html or not integration_html:
+                    continue
+                yield cls.build_player_url(video_id_html, integration_html, url)
+            elif script_tag:
+                if not video_id_js or not integration_js:
+                    continue
+                yield cls.build_player_url(video_id_js, integration_js, url)
+
+    def _real_extract(self, url):
+        url, origin_url = self._unsmuggle_origin_url(url)
+        embed_id = self._match_id(url)
+        query = compat_parse_qs(compat_urllib_parse_urlparse(url).query)
+        video_id = query['playlistId'][0]
+        integration = query['integrationId'][0]
+        return self._download_and_extract_api_data(video_id, integration, origin_url)
 
 
 class RutubePlaylistBaseIE(RutubeBaseIE):
