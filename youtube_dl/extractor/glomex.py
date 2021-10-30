@@ -199,21 +199,21 @@ class GlomexEmbedIE(GlomexBaseIE):
         (?:
             <iframe[^>]+?src=(?P<_q1>%(quot_re)s)
                 (?P<url>(?:https?:)?//player\.glomex\.com/integration/[^/]+/iframe-player\.html\?
-                (?:(?!(?P=_q1)).)+)(?P=_q1)(?:\s|>)|
-            <(?P<html_tag>glomex-player|div)(?:(?:
+                (?:(?!(?P=_q1)).)+)(?P=_q1)|
+            <(?P<html_tag>glomex-player|div)(?:
                 data-integration-id=(?P<_q2>%(quot_re)s)(?P<integration_html>(?:(?!(?P=_q2)).)+)(?P=_q2)|
                 data-playlist-id=(?P<_q3>%(quot_re)s)(?P<id_html>(?:(?!(?P=_q3)).)+)(?P=_q3)|
                 data-glomex-player=(?P<_q4>%(quot_re)s)(?P<glomex_player>true)(?P=_q4)|
                 [^>]*?
-            )\s*)+>|
+            )+>|
             # naive parsing of inline scripts for hard-coded integration parameters
-            <(?P<script_tag>script)[^<]*?>(?:(?:
+            <(?P<script_tag>script)[^<]*?>(?:
                 (?P<_stjs1>dataset\.)?integrationId\s*(?(_stjs1)=|:)\s*
                     (?P<_q5>%(quot_re)s)(?P<integration_js>(?:(?!(?P=_q5)).)+)(?P=_q5)\s*(?(_stjs1);|,)?|
                 (?P<_stjs2>dataset\.)?playlistId\s*(?(_stjs2)=|:)\s*
                     (?P<_q6>%(quot_re)s)(?P<id_js>(?:(?!(?P=_q6)).)+)(?P=_q6)\s*(?(_stjs2);|,)?|
                 (?:\s|.)*?
-            )\s*)+</script>
+            )+</script>
         )
         ''' % { 'quot_re': r'[\"\']' }
         for mobj in re.finditer(EMBED_RE, webpage):
