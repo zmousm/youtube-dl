@@ -163,12 +163,12 @@ class GlomexIE(GlomexBaseIE):
         video_id = self._match_id(url)
         # Defer to the glomex:embed IE: Build and return a player URL using the
         # matched video ID and the hard-coded integration ID
-        return {
-            '_type': 'url',
-            'url': GlomexEmbedIE.build_player_url(video_id,
-                self._INTEGRATION_ID, url),
-            'ie_key': GlomexEmbedIE.ie_key(),
-        }
+        return self.url_result(
+            GlomexEmbedIE.build_player_url(video_id, self._INTEGRATION_ID,
+                url),
+            GlomexEmbedIE.ie_key(),
+            video_id
+        )
 
 
 class GlomexEmbedIE(GlomexBaseIE):
