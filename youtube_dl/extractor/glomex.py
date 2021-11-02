@@ -12,6 +12,7 @@ from ..compat import (
     compat_urllib_parse_urlencode,
 )
 from ..utils import (
+    ExtractorError,
     determine_ext,
     bool_or_none,
     int_or_none,
@@ -44,15 +45,15 @@ class GlomexBaseIE(InfoExtractor):
             'playlist_id': video_id,
             'current_url': current_url or self._DEFAULT_ORIGIN_URL,
         }
+        video_id_type = self._get_videoid_type(video_id)
         return self._download_json(
             self._BASE_API_URL,
-            video_id, 'Downloading video JSON',
-            'Unable to download video JSON', query=query)
+            video_id, 'Downloading %s JSON' % video_id_type,
+            'Unable to download %s JSON' % video_id_type,
+            query=query)
 
     @staticmethod
-    def _extract_info(_video, video_id=None, require_title=True):
-        video = _video['videos'][0]
-
+    def _extract_info(video, video_id=None, require_title=True):
         title = video['title'] if require_title else video.get('title')
 
         thumbnail = '%s/profile:player-960x540' % try_get(
@@ -67,14 +68,41 @@ class GlomexBaseIE(InfoExtractor):
             'timestamp': video.get('created_at'),
         }
 
-    def _download_and_extract_api_data(self, video_id, integration, current_url):
-        api_data = self._download_api_data(video_id, integration, current_url)
-        info = self._extract_info(api_data, video_id)
-        info['formats'] = self._extract_formats(api_data, video_id)
+    def _get_videoid_type(self, video_id):
+        _VIDEOID_TYPES = {
+            'v': 'video',
+            'pl': 'playlist',
+            'rl': 'related videos playlist',
+            'cl': 'curated playlist',
+        }
+        prefix = video_id.split('-')[0]
+        return _VIDEOID_TYPES.get(prefix, 'unknown type')
+
+    def _extract_api_data(self, video, video_id):
+        if video.get('error_code') == 'contentGeoblocked':
+            self.raise_geo_restricted(countries=video['geo_locations'])
+        info = self._extract_info(video, video_id)
+        info['formats'] = self._extract_formats(video, video_id)
         return info
 
-    def _extract_formats(self, _options, video_id):
-        options = _options['videos'][0]
+    def _download_and_extract_api_data(self, video_id, integration, current_url):
+        api_data = self._download_api_data(video_id, integration, current_url)
+        videos = api_data['videos']
+        if not videos:
+            raise ExtractorError('no videos found for %s' % video_id)
+        if len(videos) == 1:
+            return self._extract_api_data(videos[0], video_id)
+        # assume some kind of playlist
+        videos = [
+            self._extract_api_data(video, video_id)
+            for video in videos
+        ]
+        playlist_title = videos[0].get('title')
+        playlist_description = videos[0].get('description')
+        return self.playlist_result(videos, video_id,
+            playlist_title, playlist_description)
+
+    def _extract_formats(self, options, video_id):
         formats = []
         for format_id, format_url in options['source'].items():
             ext = determine_ext(format_url)
