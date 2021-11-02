@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 import re
-import itertools
 
 from .common import InfoExtractor
 from ..compat import (
@@ -14,11 +13,8 @@ from ..compat import (
 from ..utils import (
     ExtractorError,
     determine_ext,
-    bool_or_none,
     int_or_none,
     try_get,
-    unified_timestamp,
-    url_or_none,
     smuggle_url,
     unsmuggle_url,
     unescapeHTML,
