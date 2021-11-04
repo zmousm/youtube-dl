@@ -66,7 +66,7 @@ class GlomexBaseIE(InfoExtractor):
 
     def _get_videoid_type(self, video_id):
         _VIDEOID_TYPES = {
-            'v': 'video',
+            'v':  'video',
             'pl': 'playlist',
             'rl': 'related videos playlist',
             'cl': 'curated playlist',
@@ -96,7 +96,7 @@ class GlomexBaseIE(InfoExtractor):
         playlist_title = videos[0].get('title')
         playlist_description = videos[0].get('description')
         return self.playlist_result(videos, video_id,
-            playlist_title, playlist_description)
+                                    playlist_title, playlist_description)
 
     def _extract_formats(self, options, video_id):
         formats = []
@@ -157,7 +157,7 @@ class GlomexIE(GlomexBaseIE):
         # matched video ID and the hard-coded integration ID
         return self.url_result(
             GlomexEmbedIE.build_player_url(video_id, self._INTEGRATION_ID,
-                url),
+                                           url),
             GlomexEmbedIE.ie_key(),
             video_id
         )
@@ -235,13 +235,13 @@ class GlomexEmbedIE(GlomexBaseIE):
                 (?:\s|.)*?
             )+</script>
         )
-        ''' % { 'quot_re': r'[\"\']' }
+        ''' % {'quot_re': r'[\"\']'}
         for mobj in re.finditer(EMBED_RE, webpage):
             url, html_tag, video_id_html, integration_html, glomex_player, \
                 script_tag, video_id_js, integration_js = \
-                    mobj.group('url', 'html_tag', 'id_html',
-                        'integration_html', 'glomex_player', 'script_tag',
-                        'id_js', 'integration_js')
+                mobj.group('url', 'html_tag', 'id_html',
+                           'integration_html', 'glomex_player', 'script_tag',
+                           'id_js', 'integration_js')
             if url:
                 yield cls._smuggle_origin_url(unescapeHTML(url), origin_url)
             elif html_tag:
@@ -260,5 +260,7 @@ class GlomexEmbedIE(GlomexBaseIE):
         embed_id = self._match_id(url)
         query = compat_parse_qs(compat_urllib_parse_urlparse(url).query)
         video_id = query['playlistId'][0]
+        # perhaps redundant
+        assert embed_id == video_id
         integration = query['integrationId'][0]
         return self._download_and_extract_api_data(video_id, integration, origin_url)
