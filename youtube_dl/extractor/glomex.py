@@ -35,6 +35,16 @@ class GlomexBaseIE(InfoExtractor):
         unsmuggled_url, data = unsmuggle_url(url, default=defaults)
         return unsmuggled_url, data['origin']
 
+    def _get_videoid_type(self, video_id):
+        _VIDEOID_TYPES = {
+            'v':  'video',
+            'pl': 'playlist',
+            'rl': 'related videos playlist',
+            'cl': 'curated playlist',
+        }
+        prefix = video_id.split('-')[0]
+        return _VIDEOID_TYPES.get(prefix, 'unknown type')
+
     def _download_api_data(self, video_id, integration, current_url=None):
         query = {
             'integration_id': integration,
@@ -47,39 +57,6 @@ class GlomexBaseIE(InfoExtractor):
             video_id, 'Downloading %s JSON' % video_id_type,
             'Unable to download %s JSON' % video_id_type,
             query=query)
-
-    @staticmethod
-    def _extract_info(video, video_id=None, require_title=True):
-        title = video['title'] if require_title else video.get('title')
-
-        thumbnail = '%s/profile:player-960x540' % try_get(
-            video, lambda x: x['image']['url'])
-
-        return {
-            'id': video.get('clip_id') or video_id,
-            'title': title,
-            'description': video.get('description'),
-            'thumbnail': thumbnail,
-            'duration': int_or_none(video.get('clip_duration')),
-            'timestamp': video.get('created_at'),
-        }
-
-    def _get_videoid_type(self, video_id):
-        _VIDEOID_TYPES = {
-            'v':  'video',
-            'pl': 'playlist',
-            'rl': 'related videos playlist',
-            'cl': 'curated playlist',
-        }
-        prefix = video_id.split('-')[0]
-        return _VIDEOID_TYPES.get(prefix, 'unknown type')
-
-    def _extract_api_data(self, video, video_id):
-        if video.get('error_code') == 'contentGeoblocked':
-            self.raise_geo_restricted(countries=video['geo_locations'])
-        info = self._extract_info(video, video_id)
-        info['formats'] = self._extract_formats(video, video_id)
-        return info
 
     def _download_and_extract_api_data(self, video_id, integration, current_url):
         api_data = self._download_api_data(video_id, integration, current_url)
@@ -97,6 +74,29 @@ class GlomexBaseIE(InfoExtractor):
         playlist_description = videos[0].get('description')
         return self.playlist_result(videos, video_id,
                                     playlist_title, playlist_description)
+
+    def _extract_api_data(self, video, video_id):
+        if video.get('error_code') == 'contentGeoblocked':
+            self.raise_geo_restricted(countries=video['geo_locations'])
+        info = self._extract_info(video, video_id)
+        info['formats'] = self._extract_formats(video, video_id)
+        return info
+
+    @staticmethod
+    def _extract_info(video, video_id=None, require_title=True):
+        title = video['title'] if require_title else video.get('title')
+
+        thumbnail = '%s/profile:player-960x540' % try_get(
+            video, lambda x: x['image']['url'])
+
+        return {
+            'id': video.get('clip_id') or video_id,
+            'title': title,
+            'description': video.get('description'),
+            'thumbnail': thumbnail,
+            'duration': int_or_none(video.get('clip_duration')),
+            'timestamp': video.get('created_at'),
+        }
 
     def _extract_formats(self, options, video_id):
         formats = []
