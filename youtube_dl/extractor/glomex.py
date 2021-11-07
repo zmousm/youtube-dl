@@ -129,34 +129,20 @@ class GlomexIE(GlomexBaseIE):
     # Hard-coded integration ID for video.glomex.com
     _INTEGRATION_ID = '19syy24xjn1oqlpc'
 
-    _TESTS = [{
-        'url': 'http://rutube.ru/video/3eac3b4561676c17df9132a9a1e62e3e/',
-        'md5': '1d24f180fac7a02f3900712e5a5764d6',
+    _TEST = {
+        'url': 'https://video.glomex.com/sport/v-cb24uwg77hgh-nach-2-0-sieg-guardiola-mit-mancity-vor-naechstem-titel',
+        'md5': 'cec33a943c4240c9cb33abea8c26242e',
         'info_dict': {
-            'id': '3eac3b4561676c17df9132a9a1e62e3e',
+            'id': 'v-cb24uwg77hgh',
             'ext': 'mp4',
-            'title': 'Раненный кенгуру забежал в аптеку',
-            'description': 'http://www.ntdtv.ru ',
-            'duration': 81,
-            'uploader': 'NTDRussian',
-            'uploader_id': '29790',
-            'timestamp': 1381943602,
-            'upload_date': '20131016',
-            'age_limit': 0,
+            'title': 'md5:38a90cedcfadd72982c81acf13556e0c',
+            'description': 'md5:1ea6b6caff1443fcbbba159e432eedb8',
+            'duration': 29600,
+            'timestamp': 1619895017,
+            'upload_date': '20210501',
+            'age_limit': None,
         },
-    }, {
-        'url': 'http://rutube.ru/play/embed/a10e53b86e8f349080f718582ce4c661',
-        'only_matching': True,
-    }, {
-        'url': 'http://rutube.ru/embed/a10e53b86e8f349080f718582ce4c661',
-        'only_matching': True,
-    }, {
-        'url': 'http://rutube.ru/video/3eac3b4561676c17df9132a9a1e62e3e/?pl_id=4252',
-        'only_matching': True,
-    }, {
-        'url': 'https://rutube.ru/video/10b3a03fc01d5bbcc632a2f3514e8aab/?pl_type=source',
-        'only_matching': True,
-    }]
+    }
 
     def _real_extract(self, url):
         video_id = self._match_id(url)
@@ -177,27 +163,37 @@ class GlomexEmbedIE(GlomexBaseIE):
     _VALID_URL = r'(?:https?:)?//player\.glomex\.com/integration/[^/]+/iframe-player\.html\?(?:(?:integrationId=(?P<integration>[^&#]+)|playlistId=(?P<id>[^&#]+)|[^&=#]+=[^&#]+)&?)+'
 
     _TESTS = [{
-        'url': 'http://rutube.ru/video/embed/6722881?vk_puid37=&vk_puid38=',
+        'url': 'https://player.glomex.com/integration/1/iframe-player.html?integrationId=4059a013k56vb2yd&playlistId=v-cfa6lye0dkdd-sf',
         'info_dict': {
-            'id': 'a10e53b86e8f349080f718582ce4c661',
+            'id': 'v-cfa6lye0dkdd-sf',
             'ext': 'mp4',
-            'timestamp': 1387830582,
-            'upload_date': '20131223',
-            'uploader_id': '297833',
-            'description': 'Видео группы ★http://vk.com/foxkidsreset★ музей Fox Kids и Jetix<br/><br/> восстановлено и сделано в шикоформате subziro89 http://vk.com/subziro89',
-            'uploader': 'subziro89 ILya',
-            'title': 'Мистический городок Эйри в Индиан 5 серия озвучка subziro89',
+            'timestamp': 1635337199,
+            'duration': 133080,
+            'upload_date': '20211027',
+            'description': 'md5:e741185fc309310ff5d0c789b437be66',
+            'title': 'md5:35647293513a6c92363817a0fb0a7961',
         },
         'params': {
             'skip_download': True,
         },
     }, {
-        'url': 'http://rutube.ru/play/embed/8083783',
-        'only_matching': True,
+        'url': 'https://player.glomex.com/integration/1/iframe-player.html?origin=fullpage&integrationId=19syy24xjn1oqlpc&playlistId=rl-vcb49w1fb592p&playlistIndex=0',
+        'info_dict': {
+            'id': 'rl-vcb49w1fb592p',
+        },
+        'playlist_count': 100,
+        'params': {
+            'skip_download': True,
+        },
     }, {
-        # private video
-        'url': 'https://rutube.ru/play/embed/10631925?p=IbAigKqWd1do4mjaM5XLIQ',
-        'only_matching': True,
+        'url': 'https://player.glomex.com/integration/1/iframe-player.html?playlistId=cl-bgqaata6aw8x&integrationId=19syy24xjn1oqlpc',
+        'info_dict': {
+            'id': 'cl-bgqaata6aw8x',
+        },
+        'playlist_mincount': 2,
+        'params': {
+            'skip_download': True,
+        },
     }]
 
     @classmethod
