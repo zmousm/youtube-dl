@@ -263,4 +263,5 @@ class GlomexEmbedIE(GlomexBaseIE):
         # perhaps redundant
         assert embed_id == video_id
         integration = query['integrationId'][0]
-        return self._download_and_extract_api_data(video_id, integration, origin_url)
+        return self._download_and_extract_api_data(video_id, integration,
+                                                   origin_url)
