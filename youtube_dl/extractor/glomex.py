@@ -70,10 +70,7 @@ class GlomexBaseIE(InfoExtractor):
             self._extract_api_data(video, video_id)
             for video in videos
         ]
-        playlist_title = videos[0].get('title')
-        playlist_description = videos[0].get('description')
-        return self.playlist_result(videos, video_id,
-                                    playlist_title, playlist_description)
+        return self.playlist_result(videos, video_id)
 
     def _extract_api_data(self, video, video_id):
         if video.get('error_code') == 'contentGeoblocked':
