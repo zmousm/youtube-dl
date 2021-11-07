@@ -37,7 +37,7 @@ class GlomexBaseIE(InfoExtractor):
 
     def _get_videoid_type(self, video_id):
         _VIDEOID_TYPES = {
-            'v':  'video',
+            'v': 'video',
             'pl': 'playlist',
             'rl': 'related videos playlist',
             'cl': 'curated playlist',
@@ -153,7 +153,7 @@ class GlomexIE(GlomexBaseIE):
 
     def _real_extract(self, url):
         video_id = self._match_id(url)
-        # Defer to the glomex:embed IE: Build and return a player URL using the
+        # Defer to glomex:embed IE: Build and return a player URL using the
         # matched video ID and the hard-coded integration ID
         return self.url_result(
             GlomexEmbedIE.build_player_url(video_id, self._INTEGRATION_ID,
