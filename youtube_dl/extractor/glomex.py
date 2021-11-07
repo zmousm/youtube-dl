@@ -23,7 +23,7 @@ from ..utils import (
 
 class GlomexBaseIE(InfoExtractor):
     _DEFAULT_ORIGIN_URL = 'https://player.glomex.com/'
-    _BASE_API_URL = 'https://integration-cloudfront-eu-west-1.mes.glomex.cloud/'
+    _API_URL = 'https://integration-cloudfront-eu-west-1.mes.glomex.cloud/'
 
     @staticmethod
     def _smuggle_origin_url(url, origin_url):
@@ -43,7 +43,7 @@ class GlomexBaseIE(InfoExtractor):
         }
         video_id_type = self._get_videoid_type(video_id)
         return self._download_json(
-            self._BASE_API_URL,
+            self._API_URL,
             video_id, 'Downloading %s JSON' % video_id_type,
             'Unable to download %s JSON' % video_id_type,
             query=query)
