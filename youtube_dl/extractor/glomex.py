@@ -86,14 +86,24 @@ class GlomexBaseIE(InfoExtractor):
     def _extract_info(video, video_id=None, require_title=True):
         title = video['title'] if require_title else video.get('title')
 
-        thumbnail = '%s/profile:player-960x540' % try_get(
-            video, lambda x: x['image']['url'])
+        def append_image_url(url, default='profile:player-960x540'):
+            if url:
+                return '%s/%s' % (url, default)
+        thumbnail = append_image_url(try_get(video,
+                                             lambda x: x['image']['url']))
+        thumbnails = [
+            dict(width=960, height=540,
+                 **{k: append_image_url(v) if k == 'url' else v
+                    for k, v in image.items() if k in ('id', 'url')})
+            for image in video.get('images', [])
+        ] or None
 
         return {
             'id': video.get('clip_id') or video_id,
             'title': title,
             'description': video.get('description'),
             'thumbnail': thumbnail,
+            'thumbnails': thumbnails,
             'duration': int_or_none(video.get('clip_duration')),
             'timestamp': video.get('created_at'),
         }
