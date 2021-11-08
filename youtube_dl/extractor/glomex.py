@@ -118,6 +118,9 @@ class GlomexBaseIE(InfoExtractor):
                     'url': format_url,
                     'format_id': format_id,
                 })
+        if options.get('language'):
+            for format in formats:
+                format['language'] = options.get('language')
         self._sort_formats(formats)
         return formats
 
